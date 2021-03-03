@@ -126,13 +126,13 @@ elif 'cifar' in opt.foolmodel:
         training_data_loader = DataLoader(dataset=train_set, num_workers=opt.threads, batch_size=opt.batchSize, shuffle=True)
         test_set = datasets.CIFAR10('../plnn-copy/cifardata/', train=False, download=False,
                                       transform=transforms.Compose([transforms.ToTensor(), normalize]))
-        testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=opt.testBatchSize, shuffle=True)
+        # testing_data_loader = DataLoader(dataset=test_set, num_workers=opt.threads, batch_size=opt.testBatchSize, shuffle=True)
 
         name_model = 'cifar_base_kw'
         name_model = opt.foolmodel
         imag_idx = 1
         prop_idx = 1
-        _, _, _, _, model = load_cifar_1to1_exp(name_model, int(imag_idx), int(prop_idx), return_true_class=True)
+        _, _, _, _, model = load_cifar_1to1_exp(name_model, int(imag_idx), int(prop_idx), return_true_class=True, printing=True)
         model = model.cuda(gpulist[0])
         model.eval()
         pretrained_clf = model
@@ -142,7 +142,7 @@ if True:
     # load model
     path = '../plnn-copy/batch_verification_results/jade/'
     pdprops = 'easy_base_easy_SAT_jade.pkl'
-    pdprops = 'base_easy_SAT_jade.pkl'
+    # pdprops = 'base_easy_SAT_jade.pkl'
 
     gt_results = pd.read_pickle(path + pdprops)
     bnb_ids = gt_results.index
@@ -282,12 +282,12 @@ def test():
     #     print(image.size())
      #   print(type(class_label))
      #   assert(False)
-    print(enum_batch_ids)
+    # print(enum_batch_ids)
     for itr, idx in enumerate(batch_ids):
         imag_idx = gt_results.loc[idx]["Idx"]
         prop_idx = gt_results.loc[idx]['prop']
         eps_temp = gt_results.loc[idx]["Eps"]
-        eps_temp -= 0.05
+        # eps_temp += 0.1
         if opt.mode == 'train' and prop_idx!=opt.target:
             continue
         # print(itr, imag_idx, prop_idx, eps_temp)
@@ -302,14 +302,23 @@ def test():
             else:
                 print("failed to load proper net", file_)
 
-        image, y = test_set[idx]
+        image, y = test_set[imag_idx]
         class_label = torch.ones(1)*y
         image = image.unsqueeze(0)
+
+
 
         # if itr > MaxIterTest:
         #     break
 
         image = image.cuda(gpulist[0])
+
+
+        # x, verif_layers, test, y, model2 = load_cifar_1to1_exp(name_model, int(imag_idx), int(prop_idx), return_true_class=True, printing=True)
+        # print((x.cuda()-image).abs().max())
+        # y_pred = torch.max(model(image)[0], 0)[1].item()
+        # assert(y == y_pred)
+        # input("wat")
 
         if opt.perturbation_type == 'imdep':
             delta_im = netG(image)
@@ -328,16 +337,19 @@ def test():
         _, predicted_orig = torch.max(outputs_orig, 1)
         total += image.size(0)
 
-        print(y == predicted_orig)
-        print(eps_temp, prop_idx, predicted_recon, predicted_orig, (recons-image).abs().max())
-        input("wait")
+        # print(y == predicted_orig)
+        # print(eps_temp, prop_idx, predicted_recon, predicted_orig, (recons-image).abs().max())
+        # input("wait")
         correct_recon += (predicted_recon == class_label.cuda(gpulist[0])).sum()
         correct_orig += (predicted_orig == class_label.cuda(gpulist[0])).sum()
 
         if opt.target == -1:
             fooled += (predicted_recon != predicted_orig).sum()
         else:
-            fooled += (predicted_recon == opt.target).sum()
+            if outputs_recon[0][int(prop_idx)] > outputs_recon[0][int(class_label)]:
+                fooled += 1
+        # else:
+        #     fooled += (predicted_recon == opt.target).sum()
 
         if itr % 50 == 1:
             # print('Images evaluated:', (itr*opt.testBatchSize))
