@@ -1,5 +1,8 @@
 import numpy as np
-from scipy.misc import imread, imresize, imsave
+# from scipy.misc import imsave
+# from imageio import imread, imresize, imsave
+from imageio import imread#, imresize, imsave
+import cv2
 import torch
 
 
@@ -25,9 +28,11 @@ def save_img(img, filename):
     img *= 255.0
     img = img.clip(0, 255)
     img = np.transpose(img, (1, 2, 0))
-    img = imresize(img, (250, 200, 3))
+    # img = imresize(img, (250, 200, 3))
+    img = cv2.resize(src=img, dsize=(250, 200, 3))
     img = img.astype(np.uint8)
-    imsave(filename, img)
+    # imsave(filename, img)
+    imageio.imwrite(filename, img)
     print("Image saved as {}".format(filename))
 
 
